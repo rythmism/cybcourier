@@ -16,7 +16,7 @@ import (
 	"net/http"
 	"os"
 
-	_ "://github.com"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // MatchResult structures incoming game score payloads
