@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cyber Courier: Outrun Endless Runner</title>
+    <style>
+        /* RESET AND RETRO CABIN THEME LAYOUT */
+        body {
+            margin: 0;
+            padding: 0;
+            background: #03030a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: monospace;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* EMULATED SCREEN RENDER VIEWPORT FRAME */
+        #screen {
+            position: relative;
+            width: 640px;
+            height: 480px;
+            background: linear-gradient(to bottom, #20003b 0%, #050510 50%);
+            border: 4px solid #ff007f;
+            box-shadow: 0 0 25px rgba(255, 0, 127, 0.5), inset 0 0 20px rgba(0, 240, 255, 0.2);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        @media (max-width: 660px) or (max-height: 500px) {
+            #screen {
+                width: 100vw;
+                height: 100vh;
+                border: none;
+                border-radius: 0;
+            }
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* HARDWARE-ACCELERATED SCREEN-SHAKE EFFECTS */
+        @keyframes glitchShake {
+            0% { transform: translate(0, 0) skew(0deg); }
+            20% { transform: translate(-4px, 3px) skew(-2deg); }
+            40% { transform: translate(4px, -2px) skew(3deg); }
+            60% { transform: translate(-3px, -3px) skew(1deg); }
+            80% { transform: translate(3px, 4px) skew(-1deg); }
+            100% { transform: translate(0, 0) skew(0deg); }
+        }
+
+        .screen-glitch-active {
+            animation: glitchShake 0.15s linear infinite;
+            border-color: #00f0ff !important;
+            box-shadow: 0 0 35px #00f0ff, inset 0 0 25px rgba(255, 0, 127, 0.4) !important;
+        }
+
+        /* NEON-GLITCH TITLE TEXT FLICKER FRAMES */
+        @keyframes neonFlicker {
+            0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+                text-shadow: 0 0 15px #ff007f, 0 0 30px #ff007f, 0 0 45px #ff007f;
+                color: #fff;
+            }
+            20%, 24%, 55% {
+                text-shadow: none;
+                color: #440022;
+            }
+        }
+
+        /* CRT RASTER SCANLINE & VIGNETTE FILTERS */
+        .crt-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%);
+            background-size: 100% 4px;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        #screen::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, 0.5) 100%);
+            z-index: 11;
+            pointer-events: none;
+        }
+
+        /* INTERACTIVE START-MENU OVERLAY DISPLAY */
+        #startMenu {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #050510;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+        }
+
+        #startMenu h1 {
+            color: #fff;
+            font-size: 42px;
+            letter-spacing: 6px;
+            margin: 0;
+            animation: neonFlicker 3s infinite;
+            font-weight: 900;
+        }
+
+        #startMenu p {
+            color: #00f0ff;
+            font-size: 13px;
+            letter-spacing: 2px;
+            margin: 10px 0 35px 0;
+            text-shadow: 0 0 5px #00f0ff;
+        }
+
+        #playerTag {
+            background: #140526;
+            border: 2px solid #00f0ff;
+            color: #00f0ff;
+            font-size: 26px;
+            font-family: monospace;
+            text-align: center;
+            width: 120px;
+            padding: 8px;
+            outline: none;
+            text-transform: uppercase;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.25);
+            border-radius: 4px;
+        }
+
+        #bootButton {
+            margin-top: 25px;
+            background: #ff007f;
+            border: none;
+            color: #ffffff;
+            padding: 12px 28px;
+            font-size: 16px;
+            font-family: monospace;
+            cursor: pointer;
+            font-weight: bold;
+            letter-spacing: 1px;
+            box-shadow: 0 0 15px #ff007f;
+            border-radius: 4px;
+            transition: background 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        #bootButton:hover {
+            background: #ff3399;
+            box-shadow: 0 0 25px #ff3399;
+        }
+
+        /* MOBILE TOUCH CONTROLS INPUT LAYOUT CONFIGURATION */
+        #touchOverlay {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 15;
+            pointer-events: none;
+        }
+
+        @media (max-width: 660px) or (max-height: 500px) {
+            #touchOverlay { display: block; }
+        }
+
+        .touch-zone {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(0, 240, 255, 0.05);
+            color: rgba(0, 240, 255, 0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            pointer-events: auto;
+            box-sizing: border-box;
+        }
+
+        #zoneLeft  { left: 0; bottom: 0; width: 25%; height: 50%; border-radius: 0 20px 0 0; }
+        #zoneRight { left: 25%; bottom: 0; width: 25%; height: 50%; border-radius: 20px 0 0 0; }
+        #zoneJump  { right: 0; bottom: 25%; width: 50%; height: 25%; border-radius: 20px 0 0 20px; }
+        #zoneSlide { right: 0; bottom: 0; width: 50%; height: 25%; border-radius: 20px 0 0 0; }
+    </style>
+</head>
+<body>
+
+    <div id="screen">
+        <div class="crt-overlay"></div>
+        
+        <div id="startMenu">
+            <h1>CYBER COURIER</h1>
+            <p>RETRO PERSPECTIVE LO-FI RUNNER</p>
+            <input type="text" id="playerTag" maxLength="3" placeholder="TAG" value="NEO">
+            <button id="bootButton">INITIALIZE SYSTEM</button>
+        </div>
+
+        <!-- Touch Controls UI -->
+        <div id="touchOverlay">
+            <div id="zoneLeft" class="touch-zone">◀</div>
+            <div id="zoneRight" class="touch-zone">▶</div>
+            <div id="zoneJump" class="touch-zone">JUMP ▲</div>
+            <div id="zoneSlide" class="touch-zone">SLIDE ▼</div>
+        </div>
+
+        <canvas id="gameCanvas" width="640" height="480"></canvas>
+    </div>
+
+    <script src="engine.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('PWA Service Worker online sync engine registered.'))
+                .catch(err => console.error('PWA Initialization failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>
