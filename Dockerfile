@@ -2,7 +2,7 @@
 FROM golang:1.22-alpine AS builder
 RUN apk add --no-cache gcc musl-dev sqlite-dev
 WORKDIR /app
-COPY backend/server.go .
+COPY frontend/ ./frontend/ .
 RUN go mod init cyber-courier-backend && go get ://github.com
 RUN CGO_ENABLED=1 GOOS=linux go build -o courier-server server.go
 
