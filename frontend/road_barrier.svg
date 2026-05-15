@@ -1,0 +1,67 @@
+<svg width="64" height="32" viewBox="0 0 64 32" xmlns="http://www.w3.org/2000/svg" aria-labelledby="title desc" role="img">
+  <title id="title">Retro-Wave Arcade Road Block Barrier</title>
+  <desc id="desc">Neon cyberpunk striped road barrier with side clamps and glowing beacons</desc>
+  
+  <defs>
+    <!-- Diagonal hazard stripes pattern -->
+    <pattern id="hazardStripes" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(-45)">
+      <rect width="6" height="12" fill="#140526"/>
+      <rect x="6" width="6" height="12" fill="#ff007f"/>
+    </pattern>
+  </defs>
+
+  <!-- Left industrial side clamp/base -->
+  <!-- Vertical post -->
+  <rect x="6" y="12" width="5" height="14" rx="1" fill="#1a0a33" stroke="#00f0ff" stroke-width="2"/>
+  <!-- Bottom clamp plate -->
+  <rect x="3" y="25" width="11" height="5" rx="0.5" fill="#140526" stroke="#00f0ff" stroke-width="1.5"/>
+  <!-- Clamp bolts -->
+  <circle cx="6.5" cy="27" r="1" fill="#00f0ff"/>
+  <circle cx="11.5" cy="27" r="1" fill="#00f0ff"/>
+
+  <!-- Right industrial side clamp/base -->
+  <!-- Vertical post -->
+  <rect x="53" y="12" width="5" height="14" rx="1" fill="#1a0a33" stroke="#00f0ff" stroke-width="2"/>
+  <!-- Bottom clamp plate -->
+  <rect x="50" y="25" width="11" height="5" rx="0.5" fill="#140526" stroke="#00f0ff" stroke-width="1.5"/>
+  <!-- Clamp bolts -->
+  <circle cx="53.5" cy="27" r="1" fill="#00f0ff"/>
+  <circle cx="58.5" cy="27" r="1" fill="#00f0ff"/>
+
+  <!-- Main horizontal safety beam -->
+  <!-- Beam background frame -->
+  <rect x="8" y="13" width="48" height="8" rx="1" fill="#140526" stroke="#00f0ff" stroke-width="2.5"/>
+  
+  <!-- Striped hazard pattern -->
+  <rect x="9.5" y="14" width="45" height="6" rx="0.5" fill="url(#hazardStripes)" stroke="none"/>
+
+  <!-- Beam top edge highlight -->
+  <rect x="9.5" y="14" width="45" height="1.5" fill="#ffffff" opacity="0.15"/>
+
+  <!-- Left glowing blue beacon -->
+  <!-- Outer glow ring -->
+  <circle cx="8" cy="11" r="4.5" fill="#00f0ff" opacity="0.25"/>
+  <!-- Mid glow -->
+  <circle cx="8" cy="11" r="3.2" fill="#00f0ff" opacity="0.45"/>
+  <!-- Core beacon -->
+  <circle cx="8" cy="11" r="2" fill="#00f0ff"/>
+  <!-- Bright center -->
+  <circle cx="8" cy="11" r="1" fill="#ffffff"/>
+
+  <!-- Right glowing blue beacon -->
+  <!-- Outer glow ring -->
+  <circle cx="56" cy="11" r="4.5" fill="#00f0ff" opacity="0.25"/>
+  <!-- Mid glow -->
+  <circle cx="56" cy="11" r="3.2" fill="#00f0ff" opacity="0.45"/>
+  <!-- Core beacon -->
+  <circle cx="56" cy="11" r="2" fill="#00f0ff"/>
+  <!-- Bright center -->
+  <circle cx="56" cy="11" r="1" fill="#ffffff"/>
+
+  <!-- Left connector joint -->
+  <rect x="7" y="13.5" width="3" height="7" fill="#140526" stroke="#ff007f" stroke-width="1"/>
+
+  <!-- Right connector joint -->
+  <rect x="54" y="13.5" width="3" height="7" fill="#140526" stroke="#ff007f" stroke-width="1"/>
+
+</svg>
