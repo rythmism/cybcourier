@@ -404,16 +404,85 @@ async function generateSecurePayloadSignature(playerTag, finalScore, secretKey) 
     return Array.from(new Uint8Array(signatureBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function saveScoreToDatabase(playerTag, score) {
-    const sig = await generateSecurePayloadSignature(playerTag, score, CRYPTO_SECRET_KEY);
-    fetch('/api/score', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Payload-Signature': sig },
-        body: JSON.stringify({ name: playerTag, score: parseInt(score) })
-    })
-    .then(res => { if (res.ok) console.log("Score logged securely."); })
-    .catch(err => console.error("Database connection refused:", err));
+// Local non-blocking storage handling loops
+function queueScoreOffline(playerTag, score) {
+    let queuedScores = [];
+    try {
+        queuedScores = JSON.parse(localStorage.getItem('cyber_courier_offline_queue')) || [];
+    } catch (e) {
+        queuedScores = [];
+    }
+    
+    queuedScores.push({
+        name: playerTag,
+        score: parseInt(score),
+        timestamp: new Date().toISOString()
+    });
+    
+    localStorage.setItem('cyber_courier_offline_queue', JSON.stringify(queuedScores));
+    console.warn("[OFFLINE CACHE] System data stream disconnected. Saved score locally to local queue.");
 }
+
+async function flushOfflineScoreQueue() {
+    let queuedScores = [];
+    try {
+        queuedScores = JSON.parse(localStorage.getItem('cyber_courier_offline_queue')) || [];
+    } catch (e) {
+        return;
+    }
+    
+    if (queuedScores.length === 0) return;
+    console.log(`[SYNC ENGINE] Network restored. Pushing ${queuedScores.length} records...`);
+    
+    // Process local array buffers sequentially
+    for (let i = queuedScores.length - 1; i >= 0; i--) {
+        const item = queuedScores[i];
+        try {
+            const sig = await generateSecurePayloadSignature(item.name, item.score, CRYPTO_SECRET_KEY);
+            const res = await fetch('/api/score', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Payload-Signature': sig },
+                body: JSON.stringify({ name: item.name, score: item.score })
+            });
+            
+            if (res.ok) {
+                queuedScores.splice(i, 1); // Evict confirmed record item from buffer memory array
+            }
+        } catch (err) {
+            console.error("[SYNC ENGINE] Transmission retry loop aborted. Connection still unstable:", err);
+            break; // Stop execution loops until standard online signals reset network parameters
+        }
+    }
+    
+    localStorage.setItem('cyber_courier_offline_queue', JSON.stringify(queuedScores));
+}
+
+// Intercept standard application runtime connections to send payload blocks securely
+async function saveScoreToDatabase(playerTag, score) {
+    if (!navigator.onLine) {
+        queueScoreOffline(playerTag, score);
+        return;
+    }
+
+    try {
+        const sig = await generateSecurePayloadSignature(playerTag, score, CRYPTO_SECRET_KEY);
+        const res = await fetch('/api/score', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Payload-Signature': sig },
+            body: JSON.stringify({ name: playerTag, score: parseInt(score) })
+        });
+        
+        if (!res.ok) {
+            queueScoreOffline(playerTag, score);
+        }
+    } catch (err) {
+        queueScoreOffline(playerTag, score);
+    }
+}
+
+// Hardware network tracking event signals hooks
+window.addEventListener('online', flushOfflineScoreQueue);
+
 
 function processPersonalBestScores(finalScore) {
     let previousRecord = localStorage.getItem('cyber_courier_pb');
