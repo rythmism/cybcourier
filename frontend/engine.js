@@ -23,6 +23,15 @@ const totalSegments = 500;
 let survivalTimeFrames = 0;
 let backgroundScrollX = 0;
 let paletteInterpolationTime = 0;
+let playerAnimationFrameIndex = 0;
+let animationTicker = 0;
+
+function advancePlayerAnimation() {
+    animationTicker += speed * 0.01; // Scale animation speed dynamically along with track momentum
+    // Map frame variations assuming a sheet containing 4 sequential 32x64 frames
+    playerAnimationFrameIndex = Math.floor(animationTicker) % 4; 
+}
+
 
 let segments = [];
 let dynamicEntities = [];
