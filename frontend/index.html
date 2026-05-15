@@ -47,6 +47,26 @@
             height: 100%;
         }
 
+        /* Inject brightness pulse loops over retro arcade canvas interfaces */
+@keyframes phosphorPulse {
+    0%, 100% {
+        filter: brightness(1.0) contrast(1.0) drop-shadow(0 0 2px rgba(0, 240, 255, 0.1));
+    }
+    50% {
+        filter: brightness(1.04) contrast(1.02) drop-shadow(0 0 5px rgba(0, 240, 255, 0.25));
+    }
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    /* Enforce retro pixelated upscale scaling artifacts over filtered images */
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    animation: phosphorPulse 4s infinite linear;
+}
+
         /* HARDWARE-ACCELERATED SCREEN-SHAKE EFFECTS */
         @keyframes glitchShake {
             0% { transform: translate(0, 0) skew(0deg); }
