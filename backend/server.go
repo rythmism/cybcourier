@@ -72,6 +72,28 @@ func scoreHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+)
+
+func verifyPayloadSignature(playerTag string, score int, clientSignature string, secretKey string) bool {
+	message := fmt.Sprintf("%s:%d", playerTag, score)
+	hash := hmac.New(sha256.New, []byte(secretKey))
+	hash.Write([]byte(message))
+	expectedSignature := hex.EncodeToString(hash.Sum(nil))
+	
+	return hmac.Equal([]byte(clientSignature), []byte(expectedSignature))
+}
+
+// Insert this logic checkpoint directly inside your scoreHandler function code block:
+// clientSig := r.Header.Get("X-Payload-Signature")
+// if !verifyPayloadSignature(res.Name, res.Score, clientSig, "CYBER_SECRET_KEY") {
+//     http.Error(w, "Unauthorized payload modification detected", http.StatusForbidden)
+//     return
+// }
+
 // adminPortalHandler reads persistent logs and serves the HTML admin dashboard interface
 func adminPortalHandler(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Query("SELECT id, player_tag, max_score, timestamp FROM highscores ORDER BY max_score DESC LIMIT 50")
