@@ -73,6 +73,25 @@ class RetroAudioEngine {
 }
 const sfx = new RetroAudioEngine();
 
+async function generateSecurePayloadSignature(playerTag, finalScore, secretKey) {
+    const message = `${playerTag}:${finalScore}`;
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secretKey);
+    const msgData = encoder.encode(message);
+
+    const cryptoKey = await crypto.subtle.importKey(
+        "raw", keyData, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+    );
+    const signatureBuffer = await crypto.subtle.sign("HMAC", cryptoKey, msgData);
+    
+    return Array.from(new Uint8Array(signatureBuffer))
+        .map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Modify your fetch implementation to pass this custom security header string value:
+// const signature = await generateSecurePayloadSignature(playerIdentityTag, currentScore, "CYBER_SECRET_KEY");
+// headers: { "Content-Type": "application/json", "X-Payload-Signature": signature }
+
 // 3. ASSET LOAD PIPELINE MANAGEMENT
 class GameAssetPipeline {
     constructor() { this.sprites = {}; this.totalAssets = 0; this.loadedAssets = 0; }
