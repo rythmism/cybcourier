@@ -328,14 +328,36 @@ function verifyItemPickups(currentCamZ, playerLaneShiftX) {
 }
 
 function renderDynamicEntities(currentCamZ, cameraX, horizonLineY) {
-    let startSegment = Math.floor(currentCamZ / segmentLength), totalCurveOffset = 0;
+    let startSegment = Math.floor(currentCamZ / segmentLength);
+    let totalCurveOffset = 0;
+
     for (let i = 0; i < 100; i++) {
-        let segIndex = (startSegment + i) % totalSegments, segment = segments[segIndex];
-        if (!segment) continue;
+        let segIndex = (startSegment + i) % totalSegments;
+        let segment = segments[segIndex];
         totalCurveOffset += segment.curve;
+
         dynamicEntities.filter(e => e.segmentIndex === segIndex).forEach(entity => {
-            let relZ = entity.worldZ - currentCamZ; if (relZ  horizonLineY && screenX - sW/2 + sW > 0 && screenX - sW/2 < width) {
-                ctx.drawImage(assets.sprites['road_barrier'], screenX - sW / 2, screenY - sH, sW, sH);
+            let relZ = entity.worldZ - currentCamZ;
+            if (relZ  horizonLineY && screenX - sW / 2 + sW > 0 && screenX - sW / 2 < width) {
+                ctx.save();
+                
+                // Translate the transformation coordinate system origin to the base center of the barrier
+                ctx.translate(screenX, screenY);
+                
+                // Apply banking tilt angles derived from segment curve rates
+                let bankingAngle = segment.curve * 0.015;
+                ctx.rotate(bankingAngle);
+                
+                // Render asset relative to newly initialized rotation origin point indices
+                ctx.drawImage(
+                    assets.sprites['road_barrier'], 
+                    -sW / 2, 
+                    -sH, 
+                    sW, 
+                    sH
+                );
+                
+                ctx.restore();
             }
         });
     }
