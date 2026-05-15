@@ -184,6 +184,19 @@ function pollGamepadInputs() {
     lastGamepadButtonState = { left: inputLeft, right: inputRight, jump: jumpPressed, slide: slidePressed };
 }
 
+function drawPlayerCharacter() {
+    let pScreenX = (width / 2) + (playerX - camX) * (0.8 / 200) * (width / 2);
+    let pScreenY = height - 40 - playerState.yOffset;
+    
+    let sourceX = playerAnimationFrameIndex * 32; // Calculate horizontal texture clip boundaries
+    
+    ctx.drawImage(
+        assets.sprites['player_run'],
+        sourceX, 0, 32, 64,                         // Source clip vectors
+        pScreenX - 32, pScreenY - 128, 64, 128      // Screen target matrix metrics
+    );
+}
+
 function updatePlayerPhysics() {
     playerState.laneX += (playerState.targetLaneX - playerState.laneX) * 0.2;
     playerX = playerState.laneX * 1200;
