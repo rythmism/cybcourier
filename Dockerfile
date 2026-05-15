@@ -4,7 +4,7 @@ RUN apk add --no-cache gcc musl-dev sqlite-dev
 WORKDIR /app
 COPY . .
 RUN go mod init cyber-courier-backend && go mod tidy
-RUN CGO_ENABLED=1 GOOS=linux go build -o courier-server server.go
+RUN CGO_ENABLED=1 GOOS=linux go build -o courier-server .
 
 # Stage 2: Create highly-optimized slim distribution environment
 FROM alpine:3.19
