@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  game-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cyber_courier_backend
+    volumes:
+      - ./backend/data:/root/data
+    environment:
+      - DATABASE_PATH=/root/data/leaderboard.db
+    restart: unless-stopped
+
+  web-proxy:
+    image: nginx:alpine
+    container_name: cyber_courier_proxy
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - game-backend
+    restart: unless-stopped
