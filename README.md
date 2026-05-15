@@ -1,4 +1,4 @@
-[![Pseudo-3D Retro Endless Runner](https://github.com/rythmism/cybcourier/blob/main/frontend/assets/logo.svg)]
+![Pseudo-3D Retro Endless Runner](https://github.com/rythmism/cybcourier/blob/main/frontend/assets/logo.svg)
 
 # Cyber Courier: 
 #### Pseudo-3D Retro Endless Runner
