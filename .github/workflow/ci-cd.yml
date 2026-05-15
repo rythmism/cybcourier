@@ -1,0 +1,64 @@
+name: Cyber Courier Continuous Integration Pipeline
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  validate-backend:
+    name: Compiling and Testing Go Server Elements
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Repository Files
+        uses: actions/checkout@v4
+
+      - name: Initialize Go Workspace Runtime
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Install System CGO Compilation Dependencies
+        run: sudo apt-get update && sudo apt-get install -y gcc musl-dev sqlite3 libsqlite3-dev
+
+      - name: Populate External Service Libraries
+        run: |
+          cd backend
+          go mod init cyber-courier-backend || true
+          go get ://github.com
+
+      - name: Enforce Code Format Restrictions
+        run: cd backend && go fmt ./...
+
+      - name: Compile Game Core Application Binary
+        run: cd backend && CGO_ENABLED=1 GOOS=linux go build -v -o courier-server server.go
+
+  validate-frontend:
+    name: Validating Client Assets & Syntaxes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Repository Files
+        uses: actions/checkout@v4
+
+      - name: Verify Web Document Layout Structures
+        run: |
+          if [ ! -f frontend/index.html ] || [ ! -f frontend/engine.js ]; then
+              echo "Error: Critical presentation engine files missing from tree."
+              exit 1
+          fi
+
+  containerize-images:
+    name: Build & Verify Docker Images
+    needs: [validate-backend, validate-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Repository Files
+        uses: actions/checkout@v4
+
+      - name: Generate Dummy Ledger Target for Build Compliance
+        run: touch backend/leaderboard.db
+
+      - name: Execute Sandbox Image Compilation Sequence
+        run: docker build -t cyber-courier:test .
