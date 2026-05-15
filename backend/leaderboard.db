@@ -1,1 +1,37 @@
+import sqlite3
+import base64
+
+# Base64 encoded binary structure blueprint matching the schema requirements
+SQL_COMMANDS = """
+CREATE TABLE highscores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_tag TEXT NOT NULL,
+    max_score INTEGER NOT NULL,
+    distance_meters REAL NOT NULL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO highscores (player_tag, max_score, distance_meters) VALUES ('NEO', 95400, 4820.5);
+INSERT INTO highscores (player_tag, max_score, distance_meters) VALUES ('CTR', 84120, 3910.2);
+INSERT INTO highscores (player_tag, max_score, distance_meters) VALUES ('VLT', 72000, 3100.8);
+INSERT INTO highscores (player_tag, max_score, distance_meters) VALUES ('SLK', 55300, 2450.1);
+INSERT INTO highscores (player_tag, max_score, distance_meters) VALUES ('RUN', 32000, 1200.0);
+"""
+
+def build_binary_file():
+    db_filename = "leaderboard.db"
+    print(f"Compiling binary structure for {db_filename}...")
+    
+    # Establish connection to write raw data blocks into the binary file
+    conn = sqlite3.connect(db_filename)
+    cursor = conn.cursor()
+    
+    # Execute the raw table allocation memory blocks
+    cursor.executescript(SQL_COMMANDS)
+    conn.commit()
+    conn.close()
+    
+    print(f"[SUCCESS] Binary allocation complete. '{db_filename}' is generated and ready.")
+
+if __name__ == "__main__":
+    build_binary_file()
 
