@@ -2,7 +2,6 @@
 // CYBER COURIER: RETRO PSEUDO-3D RUNNER CORE ENGINE LOGIC (engine.js)
 // ============================================================================
 
-// 1. ENGINE CANVAS SETUP & GLOBAL PARAMETERS
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const width = 640;
@@ -13,7 +12,6 @@ let gameActive = false;
 let currentScore = 0;
 let distanceTraveled = 0;
 
-// Track Camera Geometry
 let camZ = 0;
 let camX = 0;
 let playerX = 0;
@@ -33,8 +31,9 @@ let batteryItems = [];
 const MAX_PARTICLES = 40;
 
 let playerIdentityTag = "NEO";
+const CRYPTO_SECRET_KEY = "CYBER_SECRET_KEY";
 
-// 2. RETRO SOUND INTERFACE ENGINE (WEB AUDIO API)
+// 1. RETRO SOUND INTERFACE ENGINE (WEB AUDIO API)
 class RetroAudioEngine {
     constructor() { this.ctx = null; }
     init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
@@ -73,26 +72,7 @@ class RetroAudioEngine {
 }
 const sfx = new RetroAudioEngine();
 
-async function generateSecurePayloadSignature(playerTag, finalScore, secretKey) {
-    const message = `${playerTag}:${finalScore}`;
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(secretKey);
-    const msgData = encoder.encode(message);
-
-    const cryptoKey = await crypto.subtle.importKey(
-        "raw", keyData, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
-    );
-    const signatureBuffer = await crypto.subtle.sign("HMAC", cryptoKey, msgData);
-    
-    return Array.from(new Uint8Array(signatureBuffer))
-        .map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Modify your fetch implementation to pass this custom security header string value:
-// const signature = await generateSecurePayloadSignature(playerIdentityTag, currentScore, "CYBER_SECRET_KEY");
-// headers: { "Content-Type": "application/json", "X-Payload-Signature": signature }
-
-// 3. ASSET LOAD PIPELINE MANAGEMENT
+// 2. ASSET LOAD PIPELINE MANAGEMENT
 class GameAssetPipeline {
     constructor() { this.sprites = {}; this.totalAssets = 0; this.loadedAssets = 0; }
     loadSprite(name, sourceUrl) {
@@ -102,7 +82,7 @@ class GameAssetPipeline {
     }
     verifyLoadingCompletion() {
         if (this.loadedAssets === this.totalAssets) {
-            console.log("All pipeline assets verified. System holding for user initialization...");
+            console.log("All assets verified.");
             document.getElementById('bootButton').addEventListener('click', () => {
                 const tagInput = document.getElementById('playerTag').value.trim().toUpperCase();
                 if (tagInput.length === 3) playerIdentityTag = tagInput;
@@ -121,7 +101,7 @@ assets.loadSprite('road_barrier', 'data:image/svg+xml;utf8,<svg xmlns="http://w3
 const batterySprite = new Image();
 batterySprite.src = 'data:image/svg+xml;utf8,<svg xmlns="http://w3.org" width="32" height="32"><polygon points="16,0 32,16 24,16 24,32 8,32 8,16 0,16" fill="%2300f0ff"/></svg>';
 
-// 4. HARDWARE INPUT EVENT LISTENERS (KEYBOARD & GAMEPAD)
+// 3. HARDWARE INPUT MANAGERS (KEYBOARD, GAMEPAD, MOBILE TOUCH SCREEN)
 const playerState = { laneX: 0, targetLaneX: 0, action: 'RUNNING', yOffset: 0, velocityY: 0 };
 const playerBoundingBox = { width: 120, depth: 80 };
 
@@ -137,29 +117,46 @@ window.addEventListener('keydown', (e) => {
     }
     if(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
 });
-
 window.addEventListener('keyup', (e) => {
     if (['ArrowDown', 's', 'S'].includes(e.key) && playerState.action === 'SLIDING') playerState.action = 'RUNNING';
 });
 
+// Touch Zone Event Configurations
+document.getElementById('zoneLeft').addEventListener('touchstart', (e) => { e.preventDefault(); if (playerState.targetLaneX > -1) playerState.targetLaneX -= 1; });
+document.getElementById('zoneRight').addEventListener('touchstart', (e) => { e.preventDefault(); if (playerState.targetLaneX < 1) playerState.targetLaneX += 1; });
+document.getElementById('zoneJump').addEventListener('touchstart', (e) => {
+    e.preventDefault(); if (playerState.action === 'RUNNING') { playerState.action = 'JUMPING'; playerState.velocityY = 25; sfx.playJumpSound(); }
+});
+document.getElementById('zoneSlide').addEventListener('touchstart', (e) => { e.preventDefault(); if (playerState.action === 'RUNNING') { playerState.action = 'SLIDING'; sfx.playSlideSound(); } });
+document.getElementById('zoneSlide').addEventListener('touchend', (e) => { e.preventDefault(); if (playerState.action === 'SLIDING') playerState.action = 'RUNNING'; });
+
 let gamepadIndex = null;
 let lastGamepadButtonState = { jump: false, slide: false, left: false, right: false };
 window.addEventListener("gamepadconnected", (e) => { gamepadIndex = e.gamepad.index; });
-window.addEventListener("pamepaddisconnected", (e) => { if (gamepadIndex === e.gamepad.index) gamepadIndex = null; });
+window.addEventListener("gamepaddisconnected", (e) => { if (gamepadIndex === e.gamepad.index) gamepadIndex = null; });
 
 function pollGamepadInputs() {
     if (gamepadIndex === null) return;
     const gamepad = navigator.getGamepads()[gamepadIndex];
     if (!gamepad) return;
-    const inputLeft = gamepad.axes[0] < -0.5 || gamepad.buttons[14]?.pressed;
-    const inputRight = gamepad.axes[0] > 0.5 || gamepad.buttons[15]?.pressed;
+    
+    const axisLeftRight = gamepad.axes[0];
+    const dpadLeft = gamepad.buttons[14]?.pressed;
+    const dpadRight = gamepad.buttons[15]?.pressed;
+    
+    const inputLeft = axisLeftRight < -0.5 || dpadLeft;
+    const inputRight = axisLeftRight > 0.5 || dpadRight;
+    
     if (inputLeft && !lastGamepadButtonState.left && playerState.targetLaneX > -1) playerState.targetLaneX -= 1;
     if (inputRight && !lastGamepadButtonState.right && playerState.targetLaneX < 1) playerState.targetLaneX += 1;
-    const jumpPressed = gamepad.buttons[0]?.pressed;
-    const slidePressed = gamepad.buttons[1]?.pressed || gamepad.buttons[13]?.pressed;
+    
+    const jumpPressed = gamepad.buttons[0]?.pressed; // A/Cross Button
+    const slidePressed = gamepad.buttons[1]?.pressed || gamepad.buttons[13]?.pressed; // B/Circle or D-pad Down
+    
     if (jumpPressed && !lastGamepadButtonState.jump && playerState.action === 'RUNNING') { playerState.action = 'JUMPING'; playerState.velocityY = 25; sfx.playJumpSound(); }
     if (slidePressed && playerState.action === 'RUNNING') { playerState.action = 'SLIDING'; sfx.playSlideSound(); }
     else if (!slidePressed && playerState.action === 'SLIDING') playerState.action = 'RUNNING';
+    
     lastGamepadButtonState = { left: inputLeft, right: inputRight, jump: jumpPressed, slide: slidePressed };
 }
 
@@ -172,7 +169,7 @@ function updatePlayerPhysics() {
     }
 }
 
-// 5. ROAD ENGINE, PARALLAX, AND THEME PALETTE SHIFTS
+// 4. ROAD ENGINE PARALLAX & DYNAMIC MATRICES
 const STAGE_PALETTES = {
     TWILIGHT: { roadA: '#111111', roadB: '#222222', neonA: '#ff007f', neonB: '#00f0ff' },
     MIDNIGHT: { roadA: '#05050d', roadB: '#0d0d1a', neonA: '#7900ff', neonB: '#00ff66' }
@@ -230,9 +227,13 @@ function drawPerspectiveTrack() {
 
     for (let n = 100; n > 0; n--) {
         let segment = segments[(startSegment + n) % totalSegments];
+        if (!segment) continue;
         curveAccumulator += runningCurve; runningCurve += segment.curve;
         let p1 = project(-curveAccumulator, segment.worldY, segment.z1, camX, 1500, camZ, 0.8);
-        let p2 = project(-(curveAccumulator + runningCurve), segments[(startSegment + n + 1) % totalSegments].worldY, segment.z2, camX, 1500, camZ, 0.8);
+        
+        let nextSegment = segments[(startSegment + n + 1) % totalSegments];
+        let nextWorldY = nextSegment ? nextSegment.worldY : 0;
+        let p2 = project(-(curveAccumulator + runningCurve), nextWorldY, segment.z2, camX, 1500, camZ, 0.8);
         
         if (p1.y <= horizon || p2.y <= horizon || p2.y <= p1.y) continue;
         ctx.fillStyle = segment.color; ctx.beginPath(); ctx.moveTo(p1.x - p1.w, p1.y); ctx.lineTo(p2.x - p2.w, p2.y);
@@ -244,7 +245,7 @@ function drawPerspectiveTrack() {
     }
 }
 
-// 6. PROCEDURAL CHUNK & ENTITY SPAWNING GRID
+// 5. PROCEDURAL TRACK GENERATION
 let trackGenerationIndex = totalSegments;
 function spawnObstacle(segmentIndex, laneX) {
     dynamicEntities.push({ segmentIndex: segmentIndex, gridX: laneX, worldZ: segmentIndex * 200, width: 160, height: 120, depth: 50, type: Math.random() > 0.5 ? 'barrier' : 'low-sign' });
@@ -270,7 +271,7 @@ function appendTrackChunk() {
 }
 function processTrackBuffer(currentCamZ) { if (trackGenerationIndex - Math.floor(currentCamZ / segmentLength) < 150) appendTrackChunk(); }
 
-// 7. COLLISION CHECKS, ITEM PICKUPS & SPRITE SCALING
+// 6. COLLISION ENGINE METRICS & SPRITE SCALERS
 function verifyEntityCollisions(currentCamZ, playerLaneShiftX, playerActionState) {
     let activeSegment = Math.floor(currentCamZ / 200) % totalSegments;
     for (let i = 0; i < dynamicEntities.length; i++) {
@@ -306,6 +307,7 @@ function renderDynamicEntities(currentCamZ, cameraX, horizonLineY) {
     let startSegment = Math.floor(currentCamZ / segmentLength), totalCurveOffset = 0;
     for (let i = 0; i < 100; i++) {
         let segIndex = (startSegment + i) % totalSegments, segment = segments[segIndex];
+        if (!segment) continue;
         totalCurveOffset += segment.curve;
         dynamicEntities.filter(e => e.segmentIndex === segIndex).forEach(entity => {
             let relZ = entity.worldZ - currentCamZ; if (relZ  horizonLineY && screenX - sW/2 + sW > 0 && screenX - sW/2 < width) {
@@ -319,6 +321,7 @@ function renderBatteryItems(currentCamZ, cameraX) {
     let startSegment = Math.floor(currentCamZ / segmentLength), totalCurveOffset = 0;
     for (let i = 0; i < 100; i++) {
         let segIndex = (startSegment + i) % totalSegments, segment = segments[segIndex];
+        if (!segment) continue;
         totalCurveOffset += segment.curve;
         batteryItems.filter(b => b.segmentIndex === segIndex && !b.collected).forEach(item => {
             let relZ = item.worldZ - currentCamZ; if (relZ <= 0) return;
@@ -332,7 +335,7 @@ function renderBatteryItems(currentCamZ, cameraX) {
     }
 }
 
-// 8. PARTICLE ENGINE & VISUAL EFFECTS
+// 7. PARTICLE TRAIL ENGINES
 function updateAndRenderParticles() {
     if (engineParticles.length < MAX_PARTICLES && Math.random() < 0.4) {
         engineParticles.push({ worldX: (Math.random() - 0.5) * 4000, worldY: Math.random() * 1000, worldZ: camZ + 3000, length: 50 + Math.random() * 100, color: Math.random() > 0.5 ? '#ff007f' : '#00f0ff' });
@@ -357,7 +360,7 @@ function triggerScreenShake(durationMs) {
     setTimeout(() => { sEl.classList.remove('screen-glitch-active'); }, durationMs);
 }
 
-// 9. METRICS SYSTEMS & DEBUG OVERLAYS
+// 8. METRICS DISPLAY & DEBUG PLOTS
 function renderDebugHitboxes() {
     let pScreenX = (width / 2) + (playerX - camX) * (0.8 / 200) * (width / 2), pScreenY = height - 40 - playerState.yOffset;
     ctx.strokeStyle = '#00f0ff'; ctx.lineWidth = 2;
@@ -365,7 +368,9 @@ function renderDebugHitboxes() {
     
     let startSegment = Math.floor(camZ / segmentLength), totalCurveOffset = 0;
     for (let i = 0; i < 100; i++) {
-        let segIndex = (startSegment + i) % totalSegments, segment = segments[segIndex]; totalCurveOffset += segment.curve;
+        let segIndex = (startSegment + i) % totalSegments, segment = segments[segIndex]; 
+        if (!segment) continue;
+        totalCurveOffset += segment.curve;
         dynamicEntities.filter(e => e.segmentIndex === segIndex).forEach(entity => {
             let relZ = entity.worldZ - camZ; if (relZ <= 0 || relZ > 4000) return;
             const fovScale = 0.8 / relZ;
@@ -388,10 +393,26 @@ function renderHeadsUpDisplay() {
     ctx.fillText(`STATE: ${playerState.action}`, width - 20, 30);
 }
 
-function saveScoreToDatabase(playerTag, score) {
-    fetch('http://localhost:8080/api/score', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: playerTag, score: parseInt(score) }) })
-    .then(res => { if (res.ok) console.log("Score logged to server."); })
-    .catch(err => console.error("Database sync offline:", err));
+// 9. ASYNCHRONOUS HMAC CRYPTO ANTI-CHEAT PACKETS
+async function generateSecurePayloadSignature(playerTag, finalScore, secretKey) {
+    const message = `${playerTag}:${finalScore}`;
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secretKey);
+    const msgData = encoder.encode(message);
+    const cryptoKey = await crypto.subtle.importKey("raw", keyData, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const signatureBuffer = await crypto.subtle.sign("HMAC", cryptoKey, msgData);
+    return Array.from(new Uint8Array(signatureBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function saveScoreToDatabase(playerTag, score) {
+    const sig = await generateSecurePayloadSignature(playerTag, score, CRYPTO_SECRET_KEY);
+    fetch('/api/score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Payload-Signature': sig },
+        body: JSON.stringify({ name: playerTag, score: parseInt(score) })
+    })
+    .then(res => { if (res.ok) console.log("Score logged securely."); })
+    .catch(err => console.error("Database connection refused:", err));
 }
 
 function processPersonalBestScores(finalScore) {
@@ -406,48 +427,5 @@ function processPersonalBestScores(finalScore) {
     ctx.fillStyle = '#fff'; ctx.font = '18px monospace';
     ctx.fillText(`FINAL PERFORMANCE: ${String(finalScore).padStart(6, '0')}`, width / 2, 210);
     ctx.fillText(`SYSTEM TRACK RECOGNITION: ${playerIdentityTag}`, width / 2, 250);
-    if (isNewRecord) { ctx.fillStyle = '#00f0ff'; ctx.font = 'bold 20px monospace'; ctx.fillText('** NEW SYSTEM RECORD LOCAL SECURE DATA **', width / 2, 300); }
-    else { ctx.fillStyle = '#a0a0a0'; ctx.fillText(`PERSONAL SYSTEM HIGHEST: ${String(currentRecordValue).padStart(6, '0')}`, width / 2, 300); }
-    ctx.fillStyle = '#ff007f'; ctx.font = '14px monospace'; ctx.fillText('PRESS R TO REBOOT NETWORK INTERFACE', width / 2, 370);
-}
-
-// 10. MAIN SYSTEM EXECUTABLE INTEGRATION TICK LOOP
-function gameTick() {
-    if (!gameActive) return;
-
-    pollGamepadInputs();
-    updatePlayerPhysics();
-    
-    survivalTimeFrames++;
-    speed = baseSpeed + (maxSpeed - baseSpeed) * (survivalTimeFrames / (3600 + survivalTimeFrames));
-    camZ += speed;
-    distanceTraveled = Math.floor(camZ / 10);
-    currentScore += Math.floor(speed * 0.1);
-
-    processTrackBuffer(camZ);
-    processDynamicPaletteShift();
-
-    if (verifyEntityCollisions(camZ, playerState.laneX, playerState.action)) {
-        gameActive = false;
-        sfx.playCrashSound();
-        triggerScreenShake(600);
-        processPersonalBestScores(currentScore);
-        saveScoreToDatabase(playerIdentityTag, currentScore);
-        return;
-    }
-    verifyItemPickups(camZ, playerState.laneX);
-
-    drawPerspectiveTrack();
-    updateAndRenderParticles();
-    generateSlideFrictionParticles();
-    renderDynamicEntities(camZ, camX, horizon);
-    renderBatteryItems(camZ, camX);
-    renderDebugHitboxes();
-    renderHeadsUpDisplay();
-
-    requestAnimationFrame(gameTick);
-}
-
-// Pre-spawn initialization buffers before structural boot validation runs
-spawnObstacle(30, 0.0); spawnObstacle(60, -1.0); spawnObstacle(90, 1.0);
+    if (isNewRecord) { ctx.fillStyle = '#0
 
