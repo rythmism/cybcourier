@@ -1,64 +1,58 @@
-name: Cyber Courier Continuous Integration Pipeline
+name: Publish Arcade Container Package
 
 on:
   push:
-    branches: [ main, master, develop ]
-  pull_request:
     branches: [ main, master ]
+    tags: [ 'v*.*.*' ]
+
+# Enforce secure authentication permissions for GHCR tokens
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  validate-backend:
-    name: Compiling and Testing Go Server Elements
+  build-and-publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Source Repository Files
+      - name: Checkout Source Files
         uses: actions/checkout@v4
 
-      - name: Initialize Go Workspace Runtime
-        uses: actions/setup-go@v5
+      - name: Setup Mock Database for Compiler Build Compliance
+        run: |
+          mkdir -p backend/data
+          touch backend/leaderboard.db
+
+      - name: Log into GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          go-version: '1.22'
-          cache: true
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install System CGO Compilation Dependencies
-        run: sudo apt-get update && sudo apt-get install -y gcc musl-dev sqlite3 libsqlite3-dev
+      - name: Extract Docker Metadata (Tags, Labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=ref,event=branch
+            type=sha,format=short
 
-      - name: Populate External Service Libraries
-        run: |
-          cd backend
-          go mod init cyber-courier-backend || true
-          go get ://github.com
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Enforce Code Format Restrictions
-        run: cd backend && go fmt ./...
-
-      - name: Compile Game Core Application Binary
-        run: cd backend && CGO_ENABLED=1 GOOS=linux go build -v -o courier-server server.go
-
-  validate-frontend:
-    name: Validating Client Assets & Syntaxes
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Source Repository Files
-        uses: actions/checkout@v4
-
-      - name: Verify Web Document Layout Structures
-        run: |
-          if [ ! -f frontend/index.html ] || [ ! -f frontend/engine.js ]; then
-              echo "Error: Critical presentation engine files missing from tree."
-              exit 1
-          fi
-
-  containerize-images:
-    name: Build & Verify Docker Images
-    needs: [validate-backend, validate-frontend]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Source Repository Files
-        uses: actions/checkout@v4
-
-      - name: Generate Dummy Ledger Target for Build Compliance
-        run: touch backend/leaderboard.db
-
-      - name: Execute Sandbox Image Compilation Sequence
-        run: docker build -t cyber-courier:test .
+      - name: Compile and Push Package Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ id.meta.outputs.tags }}
+          labels: ${{ id.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
