@@ -74,15 +74,28 @@ const sfx = new RetroAudioEngine();
 
 // 2. ASSET LOAD PIPELINE MANAGEMENT
 class GameAssetPipeline {
-    constructor() { this.sprites = {}; this.totalAssets = 0; this.loadedAssets = 0; }
+    constructor() {
+        this.sprites = {};
+        this.totalAssets = 0;
+        this.loadedAssets = 0;
+        this.frameWidths = { 'player_run': 32 }; // Width of an individual animation block
+        this.frameHeights = { 'player_run': 64 };
+    }
+
     loadSprite(name, sourceUrl) {
         this.totalAssets++;
-        const img = new Image(); img.src = sourceUrl;
-        img.onload = () => { this.loadedAssets++; this.sprites[name] = img; this.verifyLoadingCompletion(); };
+        const img = new Image();
+        img.src = sourceUrl;
+        img.onload = () => {
+            this.loadedAssets++;
+            this.sprites[name] = img;
+            this.verifyLoadingCompletion();
+        };
     }
+
     verifyLoadingCompletion() {
         if (this.loadedAssets === this.totalAssets) {
-            console.log("All assets verified.");
+            console.log("All graphical frames synchronized.");
             document.getElementById('bootButton').addEventListener('click', () => {
                 const tagInput = document.getElementById('playerTag').value.trim().toUpperCase();
                 if (tagInput.length === 3) playerIdentityTag = tagInput;
@@ -94,9 +107,11 @@ class GameAssetPipeline {
         }
     }
 }
+
 const assets = new GameAssetPipeline();
-assets.loadSprite('player_run', 'data:image/svg+xml;utf8,<svg xmlns="http://w3.org" width="32" height="64"><rect width="32" height="64" fill="%2300f0ff"/></svg>');
-assets.loadSprite('road_barrier', 'data:image/svg+xml;utf8,<svg xmlns="http://w3.org" width="64" height="32"><rect width="64" height="32" fill="%23ff007f"/></svg>');
+// Load horizontal sprite sheets containing sequential animation loops
+assets.loadSprite('player_run', 'assets/player_run.svg'); 
+assets.loadSprite('road_barrier', 'assets/road_barrier.svg');
 
 const batterySprite = new Image();
 batterySprite.src = 'data:image/svg+xml;utf8,<svg xmlns="http://w3.org" width="32" height="32"><polygon points="16,0 32,16 24,16 24,32 8,32 8,16 0,16" fill="%2300f0ff"/></svg>';
